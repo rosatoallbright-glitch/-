@@ -1,0 +1,147 @@
+﻿@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "PingFang SC", monospace;
+}
+
+/* Dark theme (default) */
+:root {
+  --bg: #09090b;
+  --bg2: #18181b;
+  --card: #18181b;
+  --border: #27272a;
+  --text: #d4d4d8;
+  --text2: #71717a;
+  --text3: #52525b;
+  --primary: #10b981;
+  --accent: #06b6d4;
+  color-scheme: dark;
+}
+
+/* Light theme */
+.light {
+  --bg: #f8fafc;
+  --bg2: #eef2f5;
+  --card: #ffffff;
+  --border: #d1d5db;
+  --text: #111827;
+  --text2: #4b5563;
+  --text3: #6b7280;
+  --primary: #047857;
+  --accent: #0d9488;
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Override tailwind zinc colors with theme variables */
+.bg-zinc-950 { background-color: var(--bg) !important; }
+.bg-zinc-900 { background-color: var(--bg2) !important; }
+.bg-zinc-900\/40 { background-color: color-mix(in srgb, var(--bg2) 40%, transparent) !important; }
+.bg-zinc-900\/30 { background-color: color-mix(in srgb, var(--bg2) 30%, transparent) !important; }
+.bg-zinc-900\/50 { background-color: color-mix(in srgb, var(--bg2) 50%, transparent) !important; }
+.bg-zinc-900\/80 { background-color: color-mix(in srgb, var(--bg2) 80%, transparent) !important; }
+.bg-zinc-800 { background-color: var(--border) !important; }
+.bg-zinc-800\/80 { background-color: color-mix(in srgb, var(--border) 80%, transparent) !important; }
+.bg-zinc-800\/50 { background-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
+.bg-zinc-800\/90 { background-color: color-mix(in srgb, var(--border) 90%, transparent) !important; }
+.bg-zinc-950\/40 { background-color: color-mix(in srgb, var(--bg) 40%, transparent) !important; }
+.bg-zinc-950\/50 { background-color: color-mix(in srgb, var(--bg) 50%, transparent) !important; }
+.bg-zinc-950\/70 { background-color: color-mix(in srgb, var(--bg) 70%, transparent) !important; }
+.bg-zinc-950\/80 { background-color: color-mix(in srgb, var(--bg) 80%, transparent) !important; }
+
+.border-zinc-800 { border-color: var(--border) !important; }
+.border-zinc-800\/60 { border-color: color-mix(in srgb, var(--border) 60%, transparent) !important; }
+.border-zinc-800\/50 { border-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
+.border-zinc-700 { border-color: var(--text3) !important; }
+
+.text-zinc-100 { color: var(--text) !important; }
+.text-zinc-200 { color: var(--text) !important; }
+.text-zinc-300 { color: var(--text) !important; }
+.text-zinc-400 { color: var(--text2) !important; }
+.text-zinc-500 { color: var(--text2) !important; }
+.text-zinc-600 { color: var(--text3) !important; }
+
+.text-emerald-400 { color: var(--primary) !important; }
+.text-emerald-400\/80 { color: color-mix(in srgb, var(--primary) 80%, transparent) !important; }
+.text-emerald-500 { color: var(--primary) !important; }
+.text-emerald-50 { color: var(--text) !important; }
+
+.bg-zinc-100 { background-color: var(--text) !important; }
+.text-zinc-900 { color: var(--bg) !important; }
+
+.from-zinc-900\/20 { --tw-gradient-from: color-mix(in srgb, var(--bg2) 20%, transparent) !important; }
+.via-zinc-950 { --tw-gradient-via: var(--bg) !important; }
+.to-zinc-950 { --tw-gradient-to: var(--bg) !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--text3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+
+/* LuluChat rendered markdown styles */
+.lulu-rendered h1, .lulu-rendered h2, .lulu-rendered h3, .lulu-rendered h4 {
+  font-weight: 700;
+  margin: 14px 0 6px;
+  color: var(--text);
+}
+.lulu-rendered h1 { font-size: 1.25em; }
+.lulu-rendered h2 { font-size: 1.15em; }
+.lulu-rendered h3 { font-size: 1.08em; }
+.lulu-rendered p { margin: 6px 0; line-height: 1.75; }
+.lulu-rendered ul { padding-left: 20px; margin: 4px 0; list-style: none; }
+.lulu-rendered ul li { margin: 3px 0; }
+.lulu-rendered ul li::before { content: "•"; color: var(--primary); display: inline-block; width: 14px; }
+.lulu-rendered ol { padding-left: 22px; margin: 4px 0; }
+.lulu-rendered ol li { margin: 3px 0; }
+.lulu-rendered blockquote { 
+  border-left: 3px solid var(--primary); 
+  padding: 8px 14px; margin: 10px 0; 
+  background: rgba(16,185,129,0.04);
+  border-radius: 0 8px 8px 0;
+  color: var(--text2);
+  line-height: 1.6;
+}
+.lulu-rendered hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.lulu-rendered pre { 
+  background: transparent !important;
+  padding: 4px 0 !important;
+  margin: 4px 0;
+  font-size: 13px; 
+  line-height: 1.35;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--text2);
+  overflow-x: auto;
+}
+
+
+
+/* Lulu chat dark mode fixes */
+.lulu-rendered strong { color: #e4e4e7 !important; }
+.lulu-rendered div { color: #d4d4d8; margin: 3px 0; }
+.lulu-rendered .math-inline { color: #34d399; font-style: italic; }
+.lulu-rendered code { color: #d4d4d8; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; }
+
+/* Light theme Lulu chat fixes */
+.light .lulu-rendered strong { color: var(--text) !important; }
+.light .lulu-rendered div,
+.light .lulu-rendered p,
+.light .lulu-rendered li,
+.light .lulu-rendered blockquote,
+.light .lulu-rendered h1,
+.light .lulu-rendered h2,
+.light .lulu-rendered h3,
+.light .lulu-rendered h4,
+.light .lulu-rendered code {
+  color: var(--text) !important;
+}
+.light .lulu-rendered code { background: rgba(17,24,39,0.04); }
+.light .lulu-rendered blockquote { background: rgba(4,120,87,0.06); border-color: var(--primary); }
