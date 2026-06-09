@@ -1,16 +1,13 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { TaskDef } from "../types";
-import { cn } from "../lib/utils";
-import { ExternalLink, CheckCircle, Timer } from "lucide-react";
+import { ExternalLink, CheckCircle } from "lucide-react";
 
 interface Props {
   task: TaskDef;
-  onComplete: () => void;
-  onStartTimer: () => void;
-  timerActive: boolean;
+  onComplete: (notes: string) => void;
 }
 
-export default function Workspace({ task, onComplete, onStartTimer, timerActive }: Props) {
+export default function Workspace({ task, onComplete }: Props) {
   const [notes, setNotes] = useState("");
 
   return (
@@ -34,43 +31,24 @@ export default function Workspace({ task, onComplete, onStartTimer, timerActive 
             打开链接
           </a>
         )}
-        <button
-          onClick={onStartTimer}
-          disabled={timerActive}
-          className={cn(
-            "inline-flex items-center gap-2 border px-6 py-2.5 rounded-lg font-mono font-bold text-sm transition-colors",
-            timerActive
-              ? "border-zinc-700 bg-zinc-950/70 text-zinc-500 cursor-not-allowed"
-              : "border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-zinc-200"
-          )}
-        >
-          <Timer className="w-4 h-4" />
-          {timerActive ? "专注已启动" : "开始计时"}
-        </button>
       </div>
 
       <div className="w-full max-w-md mb-8">
-        <p className="text-xs text-zinc-500 font-mono mb-2 text-left">学习笔记</p>
+        <p className="text-xs text-zinc-500 font-mono mb-2 text-left">学习心得</p>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-4 text-zinc-300 font-mono text-sm outline-none focus:border-zinc-500 resize-none h-32"
-          placeholder="记录你的笔记、疑问或心得..."
+          placeholder="记录你的心得、疑问或收获..."
         />
       </div>
 
       <button
-        onClick={onComplete}
-        disabled={timerActive}
-        className={cn(
-          "inline-flex items-center gap-2 px-8 py-3 rounded-lg font-bold transition-colors",
-          timerActive
-            ? "bg-zinc-950/70 text-zinc-500 cursor-not-allowed border border-zinc-700"
-            : "bg-zinc-100 hover:bg-white text-zinc-900 border border-transparent"
-        )}
+        onClick={() => onComplete(notes)}
+        className="inline-flex items-center gap-2 px-8 py-3 rounded-lg font-bold transition-colors bg-zinc-100 hover:bg-white text-zinc-900 border border-transparent"
       >
         <CheckCircle className="w-5 h-5" />
-        {timerActive ? "请完成专注后打卡" : "完成打卡"}
+        完成打卡
       </button>
 
       <p className="text-[10px] text-zinc-600 mt-4 font-mono">

@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { LuluState } from "../types";
-import { cn } from "../lib/utils";
+import { cn } from "../api/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
@@ -9,14 +9,12 @@ interface Props {
 }
 
 const EXPRESSIONS: Record<LuluState, { face: string; color: string; border: string; bg: string; label: string }> = {
-  peaceful: { face: "(o.o)", color: "text-cyan-300", border: "border-cyan-800", bg: "bg-cyan-950", label: "平静" },
-  happy:    { face: "(^o^)", color: "text-emerald-300", border: "border-emerald-700", bg: "bg-emerald-950", label: "开心" },
-  thinking: { face: "(o.o?)", color: "text-amber-300", border: "border-amber-700", bg: "bg-amber-950", label: "思考中" },
-  proud:    { face: "(^.^)", color: "text-purple-300", border: "border-purple-700", bg: "bg-purple-950", label: "骄傲" },
-  alert:    { face: "(O_O)", color: "text-red-300", border: "border-red-500", bg: "bg-red-950", label: "警觉" },
+  peaceful: { face: "(o.o)",  color: "text-cyan-300",    border: "border-cyan-800",    bg: "bg-cyan-950",    label: "平静" },
+  happy:    { face: "(^o^)",  color: "text-emerald-300",  border: "border-emerald-700", bg: "bg-emerald-950",  label: "开心" },
+  thinking: { face: "(o.o?)", color: "text-amber-300",   border: "border-amber-700",   bg: "bg-amber-950",   label: "思考中" },
+  proud:    { face: "(^.^)",  color: "text-purple-300",  border: "border-purple-700",  bg: "bg-purple-950",  label: "骄傲" },
 };
 
-const ALERT_MSGS = ["注意力分散了！", "别摸鱼！", "回到任务上吧。"];
 const HAPPY_MSGS = ["干得漂亮！", "Lulu 很满意。", "继续保持！", "太棒了！"];
 
 export default function Lulu({ state, onClick }: Props) {
@@ -25,7 +23,7 @@ export default function Lulu({ state, onClick }: Props) {
   const [winking, setWinking] = useState(false);
   const expr = EXPRESSIONS[state] || EXPRESSIONS.peaceful;
 
-  // Random wink
+  // 随机眨眼
   useEffect(() => {
     if (state === "peaceful" || state === "happy" || state === "proud") {
       const t = setInterval(() => {
@@ -36,14 +34,9 @@ export default function Lulu({ state, onClick }: Props) {
     }
   }, [state]);
 
-  // Speech bubble
+  // 对话气泡
   useEffect(() => {
-    if (state === "alert") {
-      setMessage(ALERT_MSGS[Math.floor(Math.random() * ALERT_MSGS.length)]);
-      setShowBubble(true);
-      const t = setTimeout(() => setShowBubble(false), 4000);
-      return () => clearTimeout(t);
-    } else if (state === "happy" || state === "proud") {
+    if (state === "happy" || state === "proud") {
       setMessage(HAPPY_MSGS[Math.floor(Math.random() * HAPPY_MSGS.length)]);
       setShowBubble(true);
       const t = setTimeout(() => setShowBubble(false), 3000);
@@ -55,15 +48,13 @@ export default function Lulu({ state, onClick }: Props) {
 
   const face = winking && (state === "peaceful" || state === "happy") ? "(-.o)" : expr.face;
 
-  const anim = state === "alert"
-    ? { x: [-1, 1, -1, 1, 0] }
-    : state === "thinking"
+  const anim = state === "thinking"
     ? { rotate: [0, -5, 5, 0] }
     : state === "proud"
     ? { scale: [1, 1.1, 1] }
     : { y: [0, -2, 0] };
 
-  const animDuration = state === "alert" ? 0.3 : state === "thinking" ? 1.5 : 2;
+  const animDuration = state === "thinking" ? 1.5 : 2;
 
   return (
     <div className="flex items-center gap-4">
@@ -73,11 +64,7 @@ export default function Lulu({ state, onClick }: Props) {
             initial={{ opacity: 0, x: 20, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 10, scale: 0.9 }}
-            className={`font-mono text-xs px-3 py-1.5 rounded-lg whitespace-nowrap border backdrop-blur-sm ${
-              state === "alert"
-                ? "text-red-400 bg-red-950/40 border-red-900/50"
-                : "text-emerald-400 bg-emerald-950/40 border-emerald-900/50"
-            }`}
+            className="font-mono text-xs px-3 py-1.5 rounded-lg whitespace-nowrap border backdrop-blur-sm text-emerald-400 bg-emerald-950/40 border-emerald-900/50"
           >
             {">"} {message}
           </motion.div>
@@ -106,9 +93,6 @@ export default function Lulu({ state, onClick }: Props) {
             transition={{ repeat: Infinity, duration: 3 }}
             className={cn("absolute bottom-0 w-full h-1/3", state === "happy" ? "bg-emerald-500/15" : "bg-cyan-500/15")}
           />
-        )}
-        {state === "alert" && (
-          <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 0.5 }} className="absolute inset-0 bg-red-500/10" />
         )}
       </button>
     </div>

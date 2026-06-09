@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -6,37 +6,43 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "PingFang SC", monospace;
 }
 
-/* Dark theme (default) */
+/* Gemini-inspired dark theme */
 :root {
-  --bg: #09090b;
-  --bg2: #18181b;
-  --card: #18181b;
-  --border: #27272a;
-  --text: #d4d4d8;
-  --text2: #71717a;
-  --text3: #52525b;
-  --primary: #10b981;
-  --accent: #06b6d4;
+  --bg: #131314;
+  --bg2: #1e1f20;
+  --card: #1e1f20;
+  --border: #303134;
+  --text: #e8eaed;
+  --text2: #9aa0a6;
+  --text3: #5f6368;
+  --primary: #8ab4f8;
+  --accent: #c58af9;
   color-scheme: dark;
 }
 
-/* Light theme */
+/* Gemini-inspired light theme */
 .light {
-  --bg: #f8fafc;
-  --bg2: #eef2f5;
+  --bg: #f8fafe;
+  --bg2: #ffffff;
   --card: #ffffff;
-  --border: #d1d5db;
-  --text: #111827;
-  --text2: #4b5563;
+  --border: #e2e8f0;
+  --text: #1f1f1f;
+  --text2: #444746;
   --text3: #6b7280;
-  --primary: #047857;
-  --accent: #0d9488;
+  --primary: #4285f4;
+  --accent: #7c3aed;
   color-scheme: light;
 }
 
-body {
+html, body, #root {
+  min-height: 100%;
+  width: 100%;
   background-color: var(--bg);
   color: var(--text);
+}
+
+body {
+  margin: 0;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -44,16 +50,26 @@ body {
 /* Override tailwind zinc colors with theme variables */
 .bg-zinc-950 { background-color: var(--bg) !important; }
 .bg-zinc-900 { background-color: var(--bg2) !important; }
-.bg-zinc-900\/40 { background-color: color-mix(in srgb, var(--bg2) 40%, transparent) !important; }
+.bg-zinc-900\/10 { background-color: color-mix(in srgb, var(--bg2) 10%, transparent) !important; }
+.bg-zinc-900\/20 { background-color: color-mix(in srgb, var(--bg2) 20%, transparent) !important; }
 .bg-zinc-900\/30 { background-color: color-mix(in srgb, var(--bg2) 30%, transparent) !important; }
+.bg-zinc-900\/40 { background-color: color-mix(in srgb, var(--bg2) 40%, transparent) !important; }
 .bg-zinc-900\/50 { background-color: color-mix(in srgb, var(--bg2) 50%, transparent) !important; }
+.bg-zinc-900\/60 { background-color: color-mix(in srgb, var(--bg2) 60%, transparent) !important; }
+.bg-zinc-900\/70 { background-color: color-mix(in srgb, var(--bg2) 70%, transparent) !important; }
 .bg-zinc-900\/80 { background-color: color-mix(in srgb, var(--bg2) 80%, transparent) !important; }
 .bg-zinc-800 { background-color: var(--border) !important; }
-.bg-zinc-800\/80 { background-color: color-mix(in srgb, var(--border) 80%, transparent) !important; }
+.bg-zinc-800\/20 { background-color: color-mix(in srgb, var(--border) 20%, transparent) !important; }
+.bg-zinc-800\/30 { background-color: color-mix(in srgb, var(--border) 30%, transparent) !important; }
+.bg-zinc-800\/40 { background-color: color-mix(in srgb, var(--border) 40%, transparent) !important; }
 .bg-zinc-800\/50 { background-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
+.bg-zinc-800\/60 { background-color: color-mix(in srgb, var(--border) 60%, transparent) !important; }
+.bg-zinc-800\/70 { background-color: color-mix(in srgb, var(--border) 70%, transparent) !important; }
+.bg-zinc-800\/80 { background-color: color-mix(in srgb, var(--border) 80%, transparent) !important; }
 .bg-zinc-800\/90 { background-color: color-mix(in srgb, var(--border) 90%, transparent) !important; }
 .bg-zinc-950\/40 { background-color: color-mix(in srgb, var(--bg) 40%, transparent) !important; }
 .bg-zinc-950\/50 { background-color: color-mix(in srgb, var(--bg) 50%, transparent) !important; }
+.bg-zinc-950\/60 { background-color: color-mix(in srgb, var(--bg) 60%, transparent) !important; }
 .bg-zinc-950\/70 { background-color: color-mix(in srgb, var(--bg) 70%, transparent) !important; }
 .bg-zinc-950\/80 { background-color: color-mix(in srgb, var(--bg) 80%, transparent) !important; }
 

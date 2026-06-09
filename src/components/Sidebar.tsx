@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { TaskDef, LuluState } from "../types";
-import { cn } from "../lib/utils";
+import { cn } from "../api/utils";
 import {
   CheckCircle2, Circle, XCircle, BarChart3, Plus, Trash2,
-  Edit3, Check, X, Settings, Key, BookOpen,
+  Edit3, Check, X, Settings, Key, BookOpen, Calendar,
 } from "lucide-react";
 
 interface Props {
@@ -15,17 +15,17 @@ interface Props {
   onOpenApiSettings: () => void;
   onOpenNotebook: () => void;
   onOpenChat: () => void;
+  onOpenHomework: () => void;
   luluState?: LuluState;
 }
 
 export default function Sidebar(props: Props) {
-  const { tasks, onSelectTask, activeTaskId, onOpenStats, onTasksChange, onOpenApiSettings, onOpenNotebook, onOpenChat } = props;
+  const { tasks, onSelectTask, activeTaskId, onOpenStats, onTasksChange, onOpenApiSettings, onOpenNotebook, onOpenHomework } = props;
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editUrl, setEditUrl] = useState("");
-  const [editMins, setEditMins] = useState(30);
 
   const deleteTask = (id: string) => {
     onTasksChange(tasks.filter((t) => t.id !== id));
@@ -36,7 +36,6 @@ export default function Sidebar(props: Props) {
     setEditTitle(task.title);
     setEditDesc(task.description);
     setEditUrl(task.url || "");
-    setEditMins(task.estimatedMinutes);
   };
 
   const saveEdit = () => {
@@ -49,7 +48,6 @@ export default function Sidebar(props: Props) {
               title: editTitle.trim(),
               description: editDesc.trim(),
               url: editUrl.trim() || undefined,
-              estimatedMinutes: editMins,
             }
           : t
       )
@@ -64,14 +62,12 @@ export default function Sidebar(props: Props) {
       title: "新任务",
       status: "pending",
       description: "点击编辑修改任务内容",
-      estimatedMinutes: 30,
     };
     onTasksChange([...tasks, newTask]);
     setEditingId(id);
     setEditTitle("新任务");
     setEditDesc("点击编辑修改任务内容");
     setEditUrl("");
-    setEditMins(30);
   };
 
   return (
@@ -101,14 +97,6 @@ export default function Sidebar(props: Props) {
                     className="flex-1 bg-zinc-950 border border-zinc-600 rounded px-2 py-1.5 text-xs text-zinc-400 outline-none focus:border-zinc-400"
                     placeholder="链接 (可选)"
                   />
-                  <input
-                    type="number"
-                    value={editMins}
-                    onChange={(e) => { const v = e.target.value; setEditMins(v === "" ? 0 : Number(v)); }}
-                    className="w-16 bg-zinc-950 border border-zinc-600 rounded px-2 py-1.5 text-xs text-zinc-400 outline-none focus:border-zinc-400"
-                    min={5} max={480}
-                  />
-                  <span className="text-[10px] text-zinc-600 self-center">分钟</span>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => setEditingId(null)} className="text-zinc-500 hover:text-zinc-300 p-1">
@@ -144,9 +132,6 @@ export default function Sidebar(props: Props) {
                   ) : (
                     <span className="text-[10px] font-mono text-zinc-600">无链接</span>
                   )}
-                  <span className="font-mono text-xs text-emerald-400/80 font-semibold">
-                    {task.estimatedMinutes}min
-                  </span>
                 </div>
               </button>
             )}
@@ -207,6 +192,13 @@ export default function Sidebar(props: Props) {
         >
           <Key className="w-4 h-4" />
           <span>API 设置</span>
+        </button>
+        <button
+          onClick={onOpenHomework}
+          className="w-full text-left p-2.5 rounded-lg border border-zinc-800/50 bg-zinc-900/40 hover:bg-zinc-800/50 transition-colors flex items-center gap-3 text-zinc-500 hover:text-zinc-300 text-xs font-mono"
+        >
+          <Calendar className="w-4 h-4" />
+          <span>作业记录</span>
         </button>
         <button
           onClick={onOpenStats}
