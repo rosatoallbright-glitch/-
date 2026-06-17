@@ -88,36 +88,57 @@ export default function App() {
         return t;
       }));
     }
-  }, [loaded]);
+  }, [loaded, records]);
+
+  useEffect(() => {
+    if (!loaded || tasks.length === 0 || records.length === 0) return;
+    const taskTitleMap = new Map(tasks.map((task) => [task.id, task.title] as const));
+    setRecords((prev) => {
+      const next = prev.map((record) => ({
+        ...record,
+        tasks: record.tasks.map((item) => ({
+          ...item,
+          taskTitle: item.taskTitle || taskTitleMap.get(item.taskId) || item.taskId,
+        })),
+      }));
+      if (JSON.stringify(next) !== JSON.stringify(prev)) {
+        saveRecords(next.slice(0, 365));
+      }
+      return next;
+    });
+  }, [loaded, tasks, records, saveRecords]);
 
   useEffect(() => { document.documentElement.classList.toggle("light", theme === "light"); }, [theme]);
 
   const toggleTheme = () => { const n = theme === "dark" ? "light" : "dark"; setTheme(n); saveTheme(n); };
   const activeTask = tasks.find((t) => t.id === activeTaskId);
 
+  const syncRecordTaskTitles = useCallback((ts: TaskDef[]) => {
+    const titleMap = new Map(ts.map((task) => [task.id, task.title] as const));
+    setRecords((prev) => {
+      const next = prev.map((record) => ({
+        ...record,
+        tasks: record.tasks.map((item) => ({
+          ...item,
+          taskTitle: titleMap.get(item.taskId) || item.taskTitle,
+        })),
+      }));
+      saveRecords(next.slice(0, 365));
+      return next.slice(0, 365);
+    });
+  }, [saveRecords]);
+
   const handleTasksChange = (ts: TaskDef[]) => {
     setTasks(ts);
     saveTasks(ts);
+    syncRecordTaskTitles(ts);
   };
 
-  const removeTask = useCallback((taskId: string) => {
-    const taskTitle = tasks.find((t) => t.id === taskId)?.title;
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    saveTasks(tasks.filter((t) => t.id !== taskId));
-    if (taskTitle) {
-      setRecords((prev) => {
-        const next = prev.map((r) => ({
-          ...r,
-          tasks: r.tasks.map((s) => s.taskId === taskId ? { ...s, taskTitle: s.taskTitle || taskTitle } : s),
-        }));
-        saveRecords(next.slice(0, 365));
-        return next.slice(0, 365);
-      });
-    }
-  }, [tasks, saveTasks, saveRecords]);
-
   const handleTasksFromLulu = (ts: TaskDef[]) => {
-    setTasks(ts); saveTasks(ts); setActiveTaskId(null); setLuluState("happy");
+    setTasks(ts);
+    saveTasks(ts);
+    setActiveTaskId(null);
+    setLuluState("happy");
     const d = todayStr();
     setRecords((p) => {
       const nr = [{ date: d, tasks: ts.map((t) => ({ taskId: t.id, taskTitle: t.title, completed: false, note: undefined })) }, ...p.filter((r) => r.date !== d)];
@@ -150,13 +171,33 @@ export default function App() {
     const finishedTask = tasks.find((t) => t.id === taskId);
     setLuluState("happy");
     const d = todayStr();
-    setRecords((p) => {
-      const ex = p.find((r) => r.date === d);
-      const nr = ex
-        ? p.map((r) => r.date !== d ? r : { ...r, tasks: r.tasks.map((s) => s.taskId === taskId ? { ...s, completed: true, note: notes || undefined, taskTitle: s.taskTitle || finishedTask?.title } : s) })
-        : [{ date: d, tasks: tasks.map((t) => ({ taskId: t.id, taskTitle: t.title, completed: t.id === taskId, note: t.id === taskId ? (notes || undefined) : undefined })) }, ...p];
-      saveRecords(nr.slice(0, 365));
-      return nr.slice(0, 365);
+    const recordTaskTitle = finishedTask?.title || taskId;
+    setRecords((prev) => {
+      const existing = prev.find((r) => r.date === d);
+      const nextDayRecord = existing
+        ? {
+            ...existing,
+            tasks: (() => {
+              const existingTasks = existing.tasks.filter((t) => t.taskId !== taskId);
+              const updatedCurrent = existing.tasks.find((t) => t.taskId === taskId)
+                ? existing.tasks.map((t) => t.taskId === taskId
+                  ? { ...t, completed: true, note: notes || undefined, taskTitle: recordTaskTitle }
+                  : { ...t, taskTitle: t.taskTitle || tasks.find((task) => task.id === t.taskId)?.title })
+                : [{ taskId, taskTitle: recordTaskTitle, completed: true, note: notes || undefined }, ...existingTasks.map((t) => ({
+                    ...t,
+                    taskTitle: t.taskTitle || tasks.find((task) => task.id === t.taskId)?.title,
+                  }))];
+              return updatedCurrent;
+            })(),
+          }
+        : {
+            date: d,
+            tasks: [{ taskId, taskTitle: recordTaskTitle, completed: true, note: notes || undefined }],
+          };
+
+      const next = [nextDayRecord, ...prev.filter((r) => r.date !== d)];
+      saveRecords(next.slice(0, 365));
+      return next.slice(0, 365);
     });
     setTasks((prev) => {
       const next = prev.filter((t) => t.id !== taskId);
@@ -168,11 +209,12 @@ export default function App() {
 
   const handleTaskComplete = (id: string, notes: string) => {
     markComplete(id, notes);
-    setTimeout(() => setActiveTaskId(null), 1500);
+    setTimeout(() => setActiveTaskId(null), 300);
   };
 
-  const completedCount = tasks.filter((t) => t.status === "completed").length;
-  const allDone = completedCount === tasks.length && tasks.length > 0;
+  const todayRecord = records.find((r) => r.date === todayStr());
+  const completedCount = todayRecord?.tasks.filter((t) => t.completed).length ?? tasks.filter((t) => t.status === "completed").length;
+  const allDone = tasks.length > 0 && completedCount >= tasks.length;
 
   return (
     <div className="flex h-screen w-full overflow-hidden text-sm selection:bg-emerald-500/30">
@@ -194,7 +236,8 @@ export default function App() {
           <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${tasks.length > 0 ? (completedCount / tasks.length) * 100 : 0}%` }} /></div>
           <div className="text-[10px] text-zinc-600 font-mono w-full text-right">完成: {completedCount}/{tasks.length}</div>
         </div>
-        <Sidebar tasks={tasks} onSelectTask={(id) => { setActiveTaskId(id); setView("main"); }} activeTaskId={activeTaskId} onOpenStats={() => setView("stats")} onTasksChange={handleTasksChange} onDeleteTask={removeTask} onOpenApiSettings={() => setShowApiSettings(true)} onOpenNotebook={handleOpenNotebook} onOpenHomework={() => setShowHomework(true)} onOpenChat={() => setShowChat(true)} luluState={luluState} />
+        <Sidebar tasks={tasks} onSelectTask={(id) => { setActiveTaskId(id); setView("main"); }} activeTaskId={activeTaskId} onOpenStats={() => setView("stats")} onTasksChange={handleTasksChange} onOpenApiSettings={() => setShowApiSettings(true)} onOpenNotebook={handleOpenNotebook} onOpenHomework={() => setShowHomework(true)}
+      onCompleteTask={markComplete} onOpenChat={() => setShowChat(true)} luluState={luluState} />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 relative bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-zinc-900/20 via-zinc-950 to-zinc-950">
@@ -206,7 +249,7 @@ export default function App() {
         </header>
         <main className="flex-1 overflow-y-auto p-10">
           {view === "stats" ? (
-            <StatsPanel records={records} tasks={tasks} onBack={() => setView("main")} onStartTask={(id: string) => { setActiveTaskId(id); setView("main"); }} onDeleteRecord={(date) => {
+            <StatsPanel records={records} onBack={() => setView("main")} onDeleteRecord={(date) => {
               setRecords((prev) => {
                 const next = prev.filter(r => r.date !== date);
                 saveRecords(next.slice(0, 365));
@@ -229,7 +272,6 @@ export default function App() {
             </div>
           ) : (
             <div className="max-w-5xl mx-auto h-full flex flex-col">
-              <div className="mb-10"><div className="flex items-center gap-3 mb-2">{activeTask.status === "completed" && <span className="text-[10px] bg-emerald-950/50 border border-emerald-900 text-emerald-400 font-mono px-2 py-0.5 rounded">VERIFIED</span>}</div><h2 className="text-3xl font-bold text-zinc-100 mb-1 tracking-tight">{activeTask.title}</h2><p className="text-zinc-400 text-sm">{activeTask.description}</p></div>
               {activeTask.status === "completed" ? (
                 <div className="border border-emerald-900/50 bg-emerald-950/20 p-8 rounded-lg flex flex-col items-center justify-center text-emerald-500 font-mono">
                   <div className="text-4xl mb-4">&#10003;</div>

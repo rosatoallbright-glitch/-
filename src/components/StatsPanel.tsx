@@ -1,18 +1,16 @@
 import React from "react";
-import { DailyRecord, TaskDef } from "../types";
+import { DailyRecord } from "../types";
 import { todayStr } from "../api/utils";
 import { ArrowLeft, Sparkles, Clock, Calendar, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Props {
   records: DailyRecord[];
-  tasks: TaskDef[];
   onBack: () => void;
-  onStartTask: (taskId: string) => void;
   onDeleteRecord: (date: string) => void;
   onDeleteTaskFromRecord: (date: string, taskId: string) => void;
 }
 
-export default function StatsPanel({ records, tasks, onBack, onStartTask, onDeleteRecord, onDeleteTaskFromRecord }: Props) {
+export default function StatsPanel({ records, onBack, onDeleteRecord, onDeleteTaskFromRecord }: Props) {
   // 计算连续天数
   let streak = 0;
   const today = new Date();
@@ -30,30 +28,10 @@ export default function StatsPanel({ records, tasks, onBack, onStartTask, onDele
     else break;
   }
 
-  const taskTitleMap = Object.fromEntries(tasks.map((t) => [t.id, t.title]));
-
   const completedDayCount = records.filter((r) => r.tasks.every((t) => t.completed)).length;
   const completionRate = records.length ? Math.round((completedDayCount / records.length) * 100) : 0;
 
-  // 按任务汇总完成次数
-  const taskAgg: Record<string, { completed: number }> = {};
-  for (const r of records) {
-    for (const t of r.tasks) {
-      const rawTitle = taskTitleMap[t.taskId];
-      const isEphemeral = !rawTitle || /^task_\d{5,}$/.test(rawTitle) || /^lulu_/.test(t.taskId);
-      const key = isEphemeral ? "__deleted_temp__" : t.taskId;
-      if (!taskAgg[key]) taskAgg[key] = { completed: 0 };
-      if (t.completed) taskAgg[key].completed++;
-    }
-  }
-  const taskStats = Object.entries(taskAgg)
-    .map(([taskId, stat]) => {
-      if (taskId === "__deleted_temp__") return { taskId, title: "已删除的临时任务", ...stat };
-      return { taskId, title: taskTitleMap[taskId] || taskId, ...stat };
-    })
-    .filter((stat) => stat.completed > 0)
-    .sort((a, b) => b.completed - a.completed)
-    .slice(0, 10);
+  const getTaskTitle = (taskId: string, fallbackTitle?: string) => fallbackTitle || taskId;
 
   const [expandedDates, setExpandedDates] = React.useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = React.useState<Set<string>>(new Set());
@@ -89,31 +67,6 @@ export default function StatsPanel({ records, tasks, onBack, onStartTask, onDele
           </div>
         </div>
       </div>
-
-      {taskStats.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-sm font-bold text-zinc-300 mb-3">各任务统计</h3>
-          <div className="space-y-2">
-            {taskStats.map((stat) => (
-              <div
-                key={stat.taskId}
-                className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-800 rounded-lg group/taskStat"
-              >
-                <div>
-                  <div className="text-sm text-zinc-200 font-mono">{stat.title}</div>
-                  <div className="text-xs text-zinc-500 font-mono">完成 {stat.completed} 天</div>
-                </div>
-                <button
-                  onClick={() => onStartTask(stat.taskId)}
-                  className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded hidden group-hover/taskStat:block"
-                >
-                  继续专注
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div>
         <h3 className="text-sm font-bold text-zinc-300 mb-3">历史记录</h3>
@@ -161,7 +114,7 @@ export default function StatsPanel({ records, tasks, onBack, onStartTask, onDele
                   {isExpanded && (
                     <div className="border-t border-zinc-800 px-3 py-2 space-y-1">
                       {record.tasks.map((task, idx) => {
-                        const taskTitle = taskTitleMap[task.taskId] || task.taskId;
+                        const taskTitle = getTaskTitle(task.taskId, task.taskTitle);
                         const taskKey = `${record.date}-${idx}`;
                         const isTaskExpanded = expandedTasks.has(taskKey);
                         const toggleTask = () => {

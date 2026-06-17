@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { api } from "../api/index";
 import { Plus, X, Calendar, Clock, Trash2, CheckCircle2, Circle } from "lucide-react";
 
 interface HomeworkItem {
@@ -10,7 +11,9 @@ interface HomeworkItem {
 
 const STORAGE_KEY = "kaoyan_homework";
 
-function loadHomework(): HomeworkItem[] {
+function loadHomework(): HomeworkItem[] { return []; }
+function loadHomeworkFromApi(setItems: (v: HomeworkItem[]) => void) { api.homework.getAll().then(d => { if (Array.isArray(d) && d.length > 0) { setItems(d); saveHomework(d); } }).catch(() => {}); }
+function _oldLoadHomework(): HomeworkItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -30,7 +33,7 @@ export default function HomeworkModal({ onClose }: { onClose: () => void }) {
   const [deadlineDate, setDeadlineDate] = useState("");
   const [deadlineTime, setDeadlineTime] = useState("23:59");
 
-  useEffect(() => {
+  useEffect(() => { loadHomeworkFromApi(setItems);
     const timer = setInterval(() => {
       setItems((prev) => [...prev]);
     }, 60_000);

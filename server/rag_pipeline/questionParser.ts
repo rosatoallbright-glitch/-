@@ -29,9 +29,14 @@ export function isSectionCountQuery(text: string): boolean {
 
 export function extractQuestionNo(text: string): string | undefined {
   if (isSectionCountQuery(text)) return undefined;
-  const explicit = text.match(/第\s*([一二三四五六七八九十0-9]+)\s*题/)?.[1];
+  const normalizedText = text.replace(/\s+/g, " ");
+  const explicit = normalizedText.match(/第\s*([一二三四五六七八九十0-9]+)\s*题/)?.[1];
   if (explicit) return normalizeQuestionNo(explicit);
-  const wrapped = text.match(/[（(]\s*([0-9]{1,2})\s*[)）]/)?.[1];
+  const leading = normalizedText.match(/^(?:\s*\d{1,2})[\.、]\s*/)?.[0];
+  if (leading) return normalizeQuestionNo(leading.replace(/[^0-9]/g, ""));
+  const standalone = normalizedText.match(/(?:^|[^0-9])([0-9]{1,2})(?:$|[^0-9])/)?.[1];
+  if (standalone) return normalizeQuestionNo(standalone);
+  const wrapped = normalizedText.match(/[（(]\s*([0-9]{1,2})\s*[)）]/)?.[1];
   if (wrapped) return normalizeQuestionNo(wrapped);
   return undefined;
 }

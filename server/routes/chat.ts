@@ -17,6 +17,10 @@ const __dirname = path.dirname(__filename);
 const QA_PATH = path.join(__dirname, "..", "data", "textbook_qa_all.json");
 const SYSTEM_PROMPT = `你是 Lulu，408 考研学习助手。根据教材检索内容回答，不改动标准答案和题号。语气温和(o.o)，回答控制在300字以内。`;
 
+router.get("/qa-bank", (_req, res) => {
+  res.json({ count: qaBank.length, qaBank });
+});
+
 let qaBank: QaItem[] = [];
 let ragIndex: RagIndex | null = null;
 let chunks: LibraryChunkLike[] = [];
@@ -38,7 +42,12 @@ router.post("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "缺少 text 或 apiSettings" });
   }
 
-  const historyHint = (history || []).filter((m: ChatMessage) => m.role === "user").slice(-4).map((m: ChatMessage) => m.content).join("\n");
+  const historyHint = (history || [])
+    .filter((m: ChatMessage) => m.role === "user")
+    .slice(-4)
+    .map((m: ChatMessage) => m.content)
+    .join("\n");
+
   const parsed = parseQuestion(text, historyHint);
   const factResult = lookupQaBank(parsed, qaBank);
   const retrievedChunks = !factResult.hit && ragIndex ? retrieve(parsed, ragIndex, chunks, null) : [];
@@ -46,7 +55,7 @@ router.post("/", async (req: Request, res: Response) => {
 
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "system", content: `已加载 ${chunks.length} 个教材块，${qaBank.length} 道题库。` },
+    { role: "system", content: `已加载 ${chunks.length} 个教材块，${qaBank.length} 道题库。${factResult.hit ? "已命中JSON题库" : "未命中JSON题库"}` },
     ...promptMsgs,
     ...(history || []).slice(-10),
   ];

@@ -17,10 +17,11 @@ interface Props {
   onOpenChat: () => void;
   onOpenHomework: () => void;
   luluState?: LuluState;
+  onCompleteTask?: (taskId: string, notes: string) => void;
 }
 
 export default function Sidebar(props: Props) {
-  const { tasks, onSelectTask, activeTaskId, onOpenStats, onTasksChange, onOpenApiSettings, onOpenNotebook, onOpenHomework } = props;
+  const { tasks, onSelectTask, activeTaskId, onOpenStats, onTasksChange, onOpenApiSettings, onOpenNotebook, onOpenHomework, onCompleteTask } = props;
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -59,14 +60,14 @@ export default function Sidebar(props: Props) {
     const id = "task_" + Date.now();
     const newTask: TaskDef = {
       id,
-      title: "新任务",
+      title: "",
       status: "pending",
-      description: "点击编辑修改任务内容",
+      description: "",
     };
     onTasksChange([...tasks, newTask]);
     setEditingId(id);
-    setEditTitle("新任务");
-    setEditDesc("点击编辑修改任务内容");
+    setEditTitle("");
+    setEditDesc("");
     setEditUrl("");
   };
 
@@ -111,7 +112,7 @@ export default function Sidebar(props: Props) {
               <button
                 onClick={() => onSelectTask(task.id)}
                 className={cn(
-                  "w-full text-left p-3 rounded-lg border transition-all duration-200 flex flex-col gap-2",
+                  "w-full text-left p-2.5 rounded-lg border transition-all duration-200 flex flex-col gap-1.5",
                   activeTaskId === task.id
                     ? "bg-zinc-800/80 border-zinc-700 shadow-md"
                     : "bg-zinc-900/40 border-zinc-800/50 hover:bg-zinc-800/50 hover:border-zinc-700/50",
@@ -119,7 +120,7 @@ export default function Sidebar(props: Props) {
                 )}
               >
                 <div className="flex items-start justify-between">
-                  <span className="font-medium text-zinc-200 leading-tight text-sm pr-6">
+                  <span className="font-medium text-zinc-300 leading-tight text-xs pr-4">
                     {task.title}
                   </span>
                   <TaskIcon status={task.status} />

@@ -3,9 +3,10 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ApiSettings, TaskDef, ChatMessage, LuluState, QaItem } from "../types";
 
 
-import { X, Send, BookOpen, FileText, User, Loader2, FolderOpen, Trash2, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
+import { X, Send, BookOpen, FileText, User, Loader2, FolderOpen, Trash2, RefreshCw, ChevronDown, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 
 import Lulu from "./Lulu";
+import { div } from "framer-motion/m";
 
 
 
@@ -1616,9 +1617,13 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
   const [embeddingBuilding, setEmbeddingBuilding] = useState(false);
 
+  const [isExpanded, setIsExpanded] = useState(false);
   const [libraryPanelCollapsed, setLibraryPanelCollapsed] = useState(true);
+  const [searchMode, setSearchMode] = useState<"structured" | "semantic">("structured");
+  const [qaBank, setQaBank] = useState<QaItem[]>([]);
 
-  const qaBank: QaItem[] = [];
+  const searchModeLabel = searchMode === "structured" ? "搜题模式" : "语义模式";
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -1954,6 +1959,12 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
       const librarySummary = buildLibrarySummary(libraryName, uploadedFiles);
 
+
+      const useStructured = searchMode === "structured";
+      const useSemantic = searchMode === "semantic";
+      const searchModeHint = useStructured
+        ? "搜题模式：仅从 JSON 题库检索，命中即返回，未命中则提示。"
+        : "语义模式：仅从教材 txt 做 RAG 语义检索，不查题库。";
       const embeddingSummary = `Embedding 状态：${embeddingConnected === true ? `已连接 ${EMBEDDING_MODEL}` : embeddingConnected === false ? "未连接" : "检测中"}${embeddingBuilding ? " / 构建中" : ""}`;
 
       const sysMessages: ChatMessage[] = [
@@ -1967,7 +1978,7 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
           content: "资料库状态如下。你必须承认并使用这个状态，不要说用户没有上传/没有提供文件。若用户问“你是读取我的文件知道的吗/资料库里有什么/第几章有几节”，应优先根据资料库状态和检索内容回答：\n\n" + librarySummary + "\n\n" + embeddingSummary,
 
         },
-
+        { role: "system", content: searchModeHint },
       ];
 
 
@@ -1977,8 +1988,29 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
       let responseDirective = "";
       let qaHit = false;
       let directAnswer = "";
+      // 根据加载的文件夹名推断当前科目，只匹配该科目的题库
+      const subjectBook = detectBookName(libraryName || "");
+
+      // 如果 qaBank 为空，尝试实时获取（后端可能未在页面加载时就绪）
+      let effectiveQaBank = qaBank;
+      if (effectiveQaBank.length === 0) {
+        try {
+          const resp = await fetch("/api/chat/qa-bank");
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data?.qaBank && Array.isArray(data.qaBank)) {
+              effectiveQaBank = data.qaBank;
+              setQaBank(data.qaBank);
+              console.debug("[Lulu] qaBank on-demand fetch:", effectiveQaBank.length);
+            }
+          }
+        } catch (e) {
+          console.debug("[Lulu] qaBank fetch failed:", e);
+        }
+      }
+
       // === PATH A: Structured question bank from JSON (stable source of truth) ===
-      if (qaBank.length > 0) {
+      if (useStructured && effectiveQaBank.length > 0) {
         const recentCtx = newMessages
           .filter((m: any) => m.role === "user")
           .slice(-4)
@@ -1989,7 +2021,7 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
         const qaQuestionNo = isSectionCountQuery(text) ? undefined : extractQuestionNo(text);
         const normalizedSection = qaSection ? qaSection.replace(/[^0-9.]/g, "") : "";
         const sectionQs = normalizedSection
-          ? qaBank.filter((q: any) => (q.section || "").replace(/[^0-9.]/g, "") === normalizedSection)
+          ? effectiveQaBank.filter((q: any) => (q.section || "").replace(/[^0-9.]/g, "") === normalizedSection && (!subjectBook || subjectBook === "未分类" || q.book === subjectBook))
           : [];
         const sectionTypes = (items: QaItem[]) => {
           const types: Record<string, number> = {};
@@ -2014,7 +2046,7 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
           responseDirective = "请直接给出章节题目统计结果，不要编造题目，不要解释检索过程。";
           qaHit = true;
         } else if (!normalizedSection && qaQuestionNo) {
-          const matches = qaBank.filter((q: any) => q.questionNo === qaQuestionNo);
+          const matches = effectiveQaBank.filter((q: any) => q.questionNo === qaQuestionNo && (!subjectBook || subjectBook === "未分类" || q.book === subjectBook));
           if (matches.length === 1) {
             const hit = matches[0];
             console.debug("[Lulu] PATH_A solo match:", hit.section, "#", hit.questionNo);
@@ -2031,7 +2063,22 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
       }
 
       if (qaHit && structuredContext) {
-        sysMessages.push({ role: "system", content: `${responseDirective}\n\n${structuredContext}` });
+        sysMessages.length = 0;
+        sysMessages.push({
+          role: "system",
+          content: (structuredContext.includes("答案与解析：") && structuredContext.split("答案与解析：")[1].trim().length > 0) ? "你是 Lulu，408 考研助手。以下题目和答案来自题库，请讲解，300 字以内。\n\n" + structuredContext : "你是 Lulu，408 考研助手。以下题目来自题库但无标准答案，请根据你的知识直接解答，选择题逐一分析选项对错，300 字以内。\n\n" + structuredContext,
+        });
+        // 显示匹配到的题目卡片，让用户确认检索正确
+        const questionOnly = structuredContext.split("答案与解析：")[0].trim();
+        setMessages((prev) => [...prev, { role: "assistant", content: "[题库匹配]\n\n" + questionOnly }]);
+      }
+
+      // 搜题模式未命中：直接告知用户，不 fallthrough 到 RAG
+      if (useStructured && !qaHit) {
+        setMessages((prev) => [...prev, { role: "assistant", content: "(o.o) JSON题库中未找到该题目。可尝试：1) 检查章节号格式（如 6.3.4）2) 确认题号 3) 切换到「语义」模式做 RAG 检索。直接告诉我题目内容也可以。" }]);
+        setLoading(false);
+        setStreamingContent("");
+        return;
       }
 
       if (!qaHit && (libraryChunks.length > 0 || textbookCorpus)) {
@@ -2248,9 +2295,9 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-md p-2 sm:p-6" onClick={onClose}>
 
-      <div className="flex h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-[linear-gradient(180deg,var(--bg2),var(--bg))] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className={`flex w-full flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-[linear-gradient(180deg,var(--bg2),var(--bg))] shadow-2xl ${isExpanded ? "h-[98vh] max-w-[98vw]" : "h-[94vh] max-w-[92vw]"}`} onClick={(e) => e.stopPropagation()}>
 
-        <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 py-3 sm:px-5 sm:py-4 shrink-0">
+        <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-3 py-2 sm:px-4 sm:py-2.5 shrink-0">
 
           <div className="flex items-center gap-3 min-w-0">
 
@@ -2268,21 +2315,23 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
               <h2 className="truncate text-sm font-bold text-zinc-100 font-mono">Lulu{luluState ? ` (${LULU_STATE_LABELS[luluState]})` : ""}</h2>
 
-              <p className="truncate text-[10px] text-zinc-500 font-mono">
 
-                {textbookContent ? "教材已加载 (" + uploadedFiles.length + " 个文件)" : `水豚助手${luluState ? " • " + LULU_STATE_LABELS[luluState] : ""}`}
-
-                {actualModel && !modelMismatch && <span className="text-[9px] text-emerald-400/70 font-mono ml-1">(API: {actualModel})</span>}
-
-                {modelMismatch && <span className="text-[9px] text-amber-400 font-mono ml-1">(API: {actualModel} ≠ 配置)</span>}
-
-              </p>
 
             </div>
 
           </div>
 
+
           <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] font-mono text-zinc-600 mr-1">模式</span>
+            <button onClick={() => setSearchMode("structured")} className={`px-2 py-1 rounded border transition-colors text-[11px] font-mono ${searchMode === "structured" ? "border-emerald-500 text-emerald-400 bg-emerald-950/30" : "border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"}`}>搜题</button>
+            <button onClick={() => setSearchMode("semantic")} className={`px-2 py-1 rounded border transition-colors text-[11px] font-mono ${searchMode === "semantic" ? "border-emerald-500 text-emerald-400 bg-emerald-950/30" : "border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"}`}>语义</button>
+
+            <span className="text-zinc-700 mx-1">|</span>
+            <span className="text-[10px] font-mono text-zinc-500">{folderLoaded ? `已加载 ${uploadedFiles.length} 个文件` : "未加载"}</span>
+            <span className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${embeddingConnected === true ? "bg-emerald-400" : embeddingConnected === false ? "bg-amber-400" : "bg-zinc-500 animate-pulse"}`} />
+            <span className="text-[10px] font-mono text-zinc-500">{embeddingConnected === true ? `Embedding 已连接` : embeddingConnected === false ? "Embedding 未连接" : "Embedding 检试中..."}</span>
+            <button onClick={refreshEmbeddingStatus} className="text-zinc-600 hover:text-zinc-400 transition-colors" title="重新检测 Embedding"><RefreshCw className="w-3 h-3" /></button>
 
             {textbookContent && (
 
@@ -2300,77 +2349,22 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
             </button>
 
+            <button onClick={() => setIsExpanded((v) => !v)} className="p-2 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors" title={isExpanded ? "还原窗口" : "放大窗口"}>
+              {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
             <button onClick={onClose} className="p-2 text-zinc-500 hover:text-zinc-300 rounded-xl hover:bg-zinc-800 transition-colors">
 
               <X className="w-4 h-4" />
 
             </button>
 
-          </div>
-
-        </div>
+          </div>    </div>
 
 
 
-        <div className="px-4 sm:px-5 py-2 border-b border-zinc-800 bg-zinc-900/40 text-xs font-mono text-zinc-500 space-y-1.5">
+        
 
-          <div className="flex items-center justify-between gap-3">
-
-            <button
-
-              onClick={() => setLibraryPanelCollapsed((v) => !v)}
-
-              className="inline-flex items-center gap-1 text-left hover:text-zinc-300 transition-colors"
-
-              title="折叠/展开资料状态"
-
-            >
-
-              {libraryPanelCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-
-              <span>{folderLoaded ? `已加载 ${uploadedFiles.length} 个文件` : "尚未选择教材文件夹"}</span>
-
-            </button>
-
-            <span className="inline-flex items-center gap-1">
-
-              <span className={`inline-block w-1.5 h-1.5 rounded-full ${
-
-                embeddingConnected === true ? "bg-emerald-400"
-
-                : embeddingConnected === false ? "bg-amber-400"
-
-                : "bg-zinc-500 animate-pulse"
-
-              }`} />
-
-              {embeddingConnected === true
-
-                ? `Embedding 已连接 (${EMBEDDING_MODEL})`
-
-                : embeddingConnected === false
-
-                ? "Embedding 未连接"
-
-                : "Embedding 检测中..."}
-
-              {embeddingBuilding && <span className="text-emerald-400/70">· 向量构建中...</span>}
-
-              <button onClick={refreshEmbeddingStatus} className="ml-1 text-zinc-600 hover:text-zinc-400 transition-colors" title="重新检测 Embedding">
-
-                <RefreshCw className="w-3 h-3" />
-
-              </button>
-
-            </span>
-
-          </div>
-
-        </div>
-
-
-
-        <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 space-y-4 bg-[radial-gradient(circle_at_top,_color-mix(in_srgb,var(--accent)_8%,transparent),transparent_35%)]">
+          <div className="flex-1 min-h-0 overflow-y-auto [overflow-anchor:none] px-3 py-4 sm:px-6 sm:py-5 space-y-4 bg-[radial-gradient(circle_at_top,_color-mix(in_srgb,var(--accent)_8%,transparent),transparent_35%)]">
 
           {messages.map((msg, i) => (
 
@@ -2466,7 +2460,7 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
         </div>
 
-
+        
 
         {error && (
 
@@ -2480,7 +2474,7 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
 
 
-        <div className="p-4 sm:p-5 border-t border-zinc-800 bg-zinc-900/50 shrink-0 space-y-2">
+        <div className="p-3 sm:p-4 border-t border-zinc-800 bg-zinc-900/50 shrink-0 space-y-2">
 
           <div className="flex gap-2">
 
@@ -2488,7 +2482,7 @@ export default function LuluChat({ apiSettings, luluState, onClose, onTasksGener
 
               placeholder="..."
 
-              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-200 outline-none focus:border-zinc-500 resize-none font-mono placeholder:text-zinc-600"
+              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-200 outline-none focus:border-zinc-500 resize-none font-mono placeholder:text-zinc-600"
 
               rows={1} style={{ minHeight: "42px", maxHeight: "120px" }}
 
